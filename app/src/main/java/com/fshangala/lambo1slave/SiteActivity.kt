@@ -90,24 +90,38 @@ class SiteActivity : AppCompatActivity() {
         model!!.oddButtons.observe(this) {
             var currentBetIndex = model!!.currentBetIndex.value
             var jslog = model!!.jslog.value
+            var stake = sharedPref!!.getString("stake","200")
+            var currentBetIndexOdds = model!!.currentBetIndexOdds.value
             runOnUiThread {
-                oddStatus!!.text = "Buttons:$it; Index:$currentBetIndex; $jslog"
+                oddStatus!!.text = "Buttons:$it; Index:$currentBetIndex; Odds:$currentBetIndexOdds; Stake:$stake; $jslog"
             }
         }
         model!!.currentBetIndex.observe(this) {
             var oddButtons = model!!.oddButtons.value
             var jslog = model!!.jslog.value
+            var stake = sharedPref!!.getString("stake","200")
+            var currentBetIndexOdds = model!!.currentBetIndexOdds.value
             runOnUiThread {
-                oddStatus!!.text = "Buttons:$oddButtons; Index:$it; $jslog"
+                oddStatus!!.text = "Buttons:$oddButtons; Index:$it; Odds:$currentBetIndexOdds; Stake:$stake; $jslog"
             }
-            openBet(it)
-            //model!!.sendCommand(AutomationObject("bet","click_bet", arrayOf(it)))
+            model!!.sendCommand(AutomationObject("bet","click_bet", arrayOf(it)))
         }
         model!!.jslog.observe(this) {
             var oddButtons = model!!.oddButtons.value
             var currentBetIndex = model!!.currentBetIndex.value
+            var stake = sharedPref!!.getString("stake","200")
+            var currentBetIndexOdds = model!!.currentBetIndexOdds.value
             runOnUiThread {
-                oddStatus!!.text = "Buttons:$oddButtons; Index:$currentBetIndex; $it"
+                oddStatus!!.text = "Buttons:$oddButtons; Index:$currentBetIndex; Odds:$currentBetIndexOdds; Stake:$stake; $it"
+            }
+        }
+        model!!.currentBetIndexOdds.observe(this) {
+            var oddButtons = model!!.oddButtons.value
+            var jslog = model!!.jslog.value
+            var currentBetIndex = model!!.currentBetIndex.value
+            var stake = sharedPref!!.getString("stake","200")
+            runOnUiThread {
+                oddStatus!!.text = "Buttons:$oddButtons; Index:$currentBetIndex; Odds:$it; Stake:$stake; $jslog"
             }
         }
         model!!.createConnection(sharedPref!!)
@@ -131,6 +145,10 @@ class SiteActivity : AppCompatActivity() {
         @JavascriptInterface
         fun buttonCount(buttons: Int){
             model!!.oddButtons.postValue(buttons)
+        }
+        @JavascriptInterface
+        fun getOdds(odds: String){
+            model!!.currentBetIndexOdds.postValue(odds)
         }
     }
 
