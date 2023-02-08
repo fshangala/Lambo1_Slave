@@ -103,8 +103,12 @@ class SiteActivity : AppCompatActivity() {
             var currentBetIndexOdds = model!!.currentBetIndexOdds.value
             runOnUiThread {
                 oddStatus!!.text = "Buttons:$oddButtons; Index:$it; Odds:$currentBetIndexOdds; Stake:$stake; $jslog"
+                webView!!.evaluateJavascript(betSite!!.openBetScript(it.toString().toInt())) {output ->
+                    model!!.jslog.postValue(output)
+                    placeBet()
+                }
             }
-            model!!.sendCommand(AutomationObject("bet","click_bet", arrayOf(it)))
+            //model!!.sendCommand(AutomationObject("bet","click_bet", arrayOf(it)))
         }
         model!!.jslog.observe(this) {
             var oddButtons = model!!.oddButtons.value
@@ -140,7 +144,7 @@ class SiteActivity : AppCompatActivity() {
     private inner class LamboJsInterface {
         @JavascriptInterface
         fun performClick(target: String){
-            model!!.currentBetIndex.postValue(target)
+            //model!!.currentBetIndex.postValue(target)
         }
         @JavascriptInterface
         fun buttonCount(buttons: Int){
@@ -195,12 +199,12 @@ class SiteActivity : AppCompatActivity() {
         }
     }
 
-    override fun onKeyDown(keyCode: Int, event: KeyEvent?): Boolean {
+    /*override fun onKeyDown(keyCode: Int, event: KeyEvent?): Boolean {
         when (keyCode) {
             KeyEvent.KEYCODE_VOLUME_UP -> {
                 model!!.sendCommand(AutomationObject("bet","confirm_bet", arrayOf()))
             }
         }
         return true
-    }
+    }*/
 }
