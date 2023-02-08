@@ -14,10 +14,10 @@ import android.webkit.WebViewClient
 import android.widget.TextView
 import android.widget.Toast
 import androidx.lifecycle.ViewModelProvider
-import com.fshangala.lambo1.AutomationEvents
-import com.fshangala.lambo1.AutomationObject
-import com.fshangala.lambo1.BetSite
-import com.fshangala.lambo1.LamboViewModel
+import com.fshangala.lambo1slave.AutomationEvents
+import com.fshangala.lambo1slave.AutomationObject
+import com.fshangala.lambo1slave.BetSite
+import com.fshangala.lambo1slave.LamboViewModel
 import java.util.*
 
 class SiteActivity : AppCompatActivity() {
@@ -58,7 +58,7 @@ class SiteActivity : AppCompatActivity() {
         model!!.automationEvents.observe(this) {
             when (it.eventName) {
                 "place_bet" -> {
-                    placeBet(it)
+                    placeBet()
                     toast = Toast.makeText(this,it.eventArgs.toString(),Toast.LENGTH_LONG)
                     toast!!.show()
                 }
@@ -100,9 +100,10 @@ class SiteActivity : AppCompatActivity() {
             runOnUiThread {
                 oddStatus!!.text = "Buttons:$oddButtons; Index:$it; $jslog"
             }
-            model!!.sendCommand(AutomationObject("bet","click_bet", arrayOf(it)))
+            openBet(it)
+            //model!!.sendCommand(AutomationObject("bet","click_bet", arrayOf(it)))
         }
-        model!!.currentBetIndex.observe(this) {
+        model!!.jslog.observe(this) {
             var oddButtons = model!!.oddButtons.value
             var currentBetIndex = model!!.currentBetIndex.value
             runOnUiThread {
@@ -134,14 +135,22 @@ class SiteActivity : AppCompatActivity() {
     }
 
     private fun onClickBet(automationEvents: AutomationEvents) {
-        placeBet(automationEvents)
+        model!!.currentBetIndex.postValue(automationEvents.eventArgs[0].toString())
     }
 
-    private fun placeBet(automationEvents: AutomationEvents) {
-        val stake = sharedPref!!.getString("stake", "200")
-        val betindex = model!!.currentBetIndex.value
+    private fun openBet(betindex: String) {
+        webView!!.evaluateJavascript(betSite!!.openBetScript(betindex.toString().toInt())){
+            runOnUiThread{
+                model!!.jslog.postValue(it)
+                placeBet()
+            }
+        }
+    }
 
-        webView!!.evaluateJavascript(betSite!!.placeBetScript(betindex.toString().toInt(),stake.toString().toDouble())){
+    private fun placeBet() {
+        val stake = sharedPref!!.getString("stake", "200")
+
+        webView!!.evaluateJavascript(betSite!!.placeBetScript(stake.toString().toDouble())){
             model!!.jslog.postValue(it)
         }
     }

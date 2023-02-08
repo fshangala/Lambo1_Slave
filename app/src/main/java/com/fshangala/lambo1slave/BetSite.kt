@@ -24,7 +24,7 @@ class BetSite(val name: String = "laser247.com") {
         when(name){
             "laser247.com" -> {
                 var theScript = "document.querySelectorAll(\".odds_body button\")[$betIndex].click();"
-                theScript += placeBetScript(betIndex,stake.toString().toDouble())
+                theScript += placeBetScript(stake.toString().toDouble())
                 return  theScript
             }
             else -> {
@@ -32,7 +32,19 @@ class BetSite(val name: String = "laser247.com") {
             }
         }
     }
-    fun placeBetScript(betIndex: Int, stake: Double, odds: Double = 0.0): String {
+    fun openBetScript(target: Int): String {
+        when(name){
+            "lotus365.com" -> {
+                return "var targetElements = document.querySelectorAll(\".SportEvent__market .odd-button\");\n" +
+                        "targetElements[$target].click();"
+            }
+            else -> {
+                return "var targetElements = document.querySelectorAll(\".SportEvent__market .odd-button\");\n" +
+                        "targetElements[$target].click();"
+            }
+        }
+    }
+    fun placeBetScript(stake: Double, odds: Double = 0.0): String {
         when(name){
             "laser247.com" -> {
                 var setodds = ""
