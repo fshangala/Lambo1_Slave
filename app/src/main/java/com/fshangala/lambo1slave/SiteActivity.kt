@@ -1,6 +1,7 @@
 package com.fshangala.lambo1slave
 
 import android.content.Context
+import android.content.Intent
 import android.content.SharedPreferences
 import android.graphics.Bitmap
 import androidx.appcompat.app.AppCompatActivity
@@ -8,6 +9,9 @@ import android.os.Bundle
 import android.os.Handler
 import android.util.Log
 import android.view.KeyEvent
+import android.view.Menu
+import android.view.MenuItem
+import android.view.WindowManager
 import android.webkit.JavascriptInterface
 import android.webkit.WebView
 import android.webkit.WebViewClient
@@ -33,6 +37,7 @@ class SiteActivity : AppCompatActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         setContentView(R.layout.activity_site)
+        window.addFlags(WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON)
 
         webView = findViewById(R.id.webView)
 
@@ -90,24 +95,45 @@ class SiteActivity : AppCompatActivity() {
         model!!.oddButtons.observe(this) {
             var currentBetIndex = model!!.currentBetIndex.value
             var jslog = model!!.jslog.value
+            var stake = sharedPref!!.getString("stake","200")
+            var currentBetIndexOdds = model!!.currentBetIndexOdds.value
             runOnUiThread {
-                oddStatus!!.text = "Buttons:$it; Index:$currentBetIndex; $jslog"
+                oddStatus!!.text = "Buttons:$it; Index:$currentBetIndex; Odds:$currentBetIndexOdds; Stake:$stake; $jslog"
             }
         }
         model!!.currentBetIndex.observe(this) {
             var oddButtons = model!!.oddButtons.value
             var jslog = model!!.jslog.value
+            var stake = sharedPref!!.getString("stake","200")
+            var currentBetIndexOdds = model!!.currentBetIndexOdds.value
             runOnUiThread {
-                oddStatus!!.text = "Buttons:$oddButtons; Index:$it; $jslog"
+                oddStatus!!.text = "Buttons:$oddButtons; Index:$it; Odds:$currentBetIndexOdds; Stake:$stake; $jslog"
+                if(it!=""){
+                    webView!!.evaluateJavascript(betSite!!.openBetScript(it.toString().toInt())) {output ->
+                        model!!.jslog.postValue(output)
+                        placeBet()
+                    }
+                }
+
             }
-            openBet(it)
             //model!!.sendCommand(AutomationObject("bet","click_bet", arrayOf(it)))
         }
         model!!.jslog.observe(this) {
             var oddButtons = model!!.oddButtons.value
             var currentBetIndex = model!!.currentBetIndex.value
+            var stake = sharedPref!!.getString("stake","200")
+            var currentBetIndexOdds = model!!.currentBetIndexOdds.value
             runOnUiThread {
-                oddStatus!!.text = "Buttons:$oddButtons; Index:$currentBetIndex; $it"
+                oddStatus!!.text = "Buttons:$oddButtons; Index:$currentBetIndex; Odds:$currentBetIndexOdds; Stake:$stake; $it"
+            }
+        }
+        model!!.currentBetIndexOdds.observe(this) {
+            var oddButtons = model!!.oddButtons.value
+            var jslog = model!!.jslog.value
+            var currentBetIndex = model!!.currentBetIndex.value
+            var stake = sharedPref!!.getString("stake","200")
+            runOnUiThread {
+                oddStatus!!.text = "Buttons:$oddButtons; Index:$currentBetIndex; Odds:$it; Stake:$stake; $jslog"
             }
         }
         model!!.createConnection(sharedPref!!)
@@ -126,11 +152,15 @@ class SiteActivity : AppCompatActivity() {
     private inner class LamboJsInterface {
         @JavascriptInterface
         fun performClick(target: String){
-            model!!.currentBetIndex.postValue(target)
+            //model!!.currentBetIndex.postValue(target)
         }
         @JavascriptInterface
         fun buttonCount(buttons: Int){
             model!!.oddButtons.postValue(buttons)
+        }
+        @JavascriptInterface
+        fun getOdds(odds: String){
+            model!!.currentBetIndexOdds.postValue(odds)
         }
     }
 
@@ -177,12 +207,48 @@ class SiteActivity : AppCompatActivity() {
         }
     }
 
-    override fun onKeyDown(keyCode: Int, event: KeyEvent?): Boolean {
+    /*override fun onKeyDown(keyCode: Int, event: KeyEvent?): Boolean {
         when (keyCode) {
             KeyEvent.KEYCODE_VOLUME_UP -> {
                 model!!.sendCommand(AutomationObject("bet","confirm_bet", arrayOf()))
             }
         }
         return true
+    }*/
+
+    override fun onCreateOptionsMenu(menu: Menu): Boolean {
+        menuInflater.inflate(R.menu.lambomenu,menu)
+
+        model!!.connected.observe(this){
+            if (it){
+                menu.getItem(1).setIcon(R.mipmap.reset_green_round)
+            } else {
+                menu.getItem(1).setIcon(R.mipmap.reset_red_round)
+            }
+        }
+
+        return super.onCreateOptionsMenu(menu)
+    }
+
+    override fun onOptionsItemSelected(item: MenuItem): Boolean {
+        when (item.itemId) {
+            R.id.preferencesBtn -> {
+                openConfig()
+            }
+
+            R.id.reconnectBtn -> {
+                model!!.createConnection(sharedPref!!)
+            }
+
+            R.id.reloadBrowserBtn -> {
+                webView!!.reload()
+            }
+        }
+        return super.onOptionsItemSelected(item)
+    }
+
+    private fun openConfig(){
+        val intent = Intent(this,ConfigActivity::class.java)
+        startActivity(intent)
     }
 }
