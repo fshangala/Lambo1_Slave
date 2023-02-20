@@ -4,24 +4,20 @@ import android.content.Context
 import android.content.Intent
 import android.content.SharedPreferences
 import android.graphics.Bitmap
-import androidx.appcompat.app.AppCompatActivity
 import android.os.Bundle
-import android.os.Handler
 import android.util.Log
 import android.view.KeyEvent
 import android.view.Menu
 import android.view.MenuItem
-import android.view.WindowManager
+import android.view.View
 import android.webkit.JavascriptInterface
 import android.webkit.WebView
 import android.webkit.WebViewClient
 import android.widget.TextView
 import android.widget.Toast
+import androidx.appcompat.app.AppCompatActivity
 import androidx.lifecycle.ViewModelProvider
-import com.fshangala.lambo1slave.AutomationEvents
-import com.fshangala.lambo1slave.AutomationObject
-import com.fshangala.lambo1slave.BetSite
-import com.fshangala.lambo1slave.LamboViewModel
+import com.google.android.material.snackbar.Snackbar
 import java.util.*
 
 class SiteActivity : AppCompatActivity() {
@@ -31,13 +27,12 @@ class SiteActivity : AppCompatActivity() {
     private var oddStatus: TextView? = null
     var sharedPref: SharedPreferences? = null
     var toast: Toast? = null
-    var betSite: BetSite? = null
-    val buttonsTimer = Timer("buttonsTimer",true)
+    var betSite: GeneralBetSite? = null
+    private val buttonsTimer = Timer("buttonsTimer",true)
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         setContentView(R.layout.activity_site)
-        window.addFlags(WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON)
 
         webView = findViewById(R.id.webView)
 
@@ -49,13 +44,32 @@ class SiteActivity : AppCompatActivity() {
         model = ViewModelProvider(this)[LamboViewModel::class.java]
         sharedPref = getSharedPreferences("MySettings", Context.MODE_PRIVATE)
         masterStatus = findViewById(R.id.status)
-        oddStatus = findViewById<TextView>(R.id.odd)
+        oddStatus = findViewById(R.id.odd)
 
-        betSite = BetSite(sharedPref!!.getString("betSite","laser247.com")!!)
-        startBrowser()
+        //betSite = BetSite(sharedPref!!.getString("betSite","laser247.com")!!)
+        //startBrowser()
 
-        buttonsTimer.scheduleAtFixedRate(UpdateButton(),0,1000)
+        //buttonsTimer.scheduleAtFixedRate(UpdateButton(),0,1000)
 
+        model!!.getRequest(sharedPref!!,"/betsite/")
+        model!!.apiResponse.observe(this) {
+            if (it != ""){
+                val betSiteList = BetSiteList(it)
+                val betSiteData = betSiteList.list[sharedPref!!.getInt("betSiteIndex",0)]
+                betSite = GeneralBetSite(betSiteData)
+                Log.d("JSON",betSite!!.eventListenerScript())
+                startBrowser()
+                buttonsTimer.scheduleAtFixedRate(UpdateButton(),0,1000)
+            }
+        }
+        model!!.apiResponseError.observe(this){
+            if(it != ""){
+                Snackbar.make(findViewById(R.id.parentLayout),it, Snackbar.LENGTH_INDEFINITE).
+                setAction("Retry", View.OnClickListener {
+                    model!!.getRequest(sharedPref!!,"/betsite/")
+                }).show()
+            }
+        }
         model!!.connectionStatus.observe(this) {
             toast = Toast.makeText(this,it,Toast.LENGTH_SHORT)
             toast!!.show()
@@ -71,6 +85,9 @@ class SiteActivity : AppCompatActivity() {
                     onClickBet(it)
                     toast = Toast.makeText(this,it.eventArgs.toString(),Toast.LENGTH_LONG)
                     toast!!.show()
+                }
+                "click" -> {
+                    confirmBet()
                 }
                 "confirm_bet" -> {
                     confirmBet()
@@ -108,15 +125,11 @@ class SiteActivity : AppCompatActivity() {
             var currentBetIndexOdds = model!!.currentBetIndexOdds.value
             runOnUiThread {
                 oddStatus!!.text = "Buttons:$oddButtons; Index:$it; Odds:$currentBetIndexOdds; Stake:$stake; $jslog"
-                if(it!=""){
-                    webView!!.evaluateJavascript(betSite!!.openBetScript(it.toString().toInt())) {output ->
-                        model!!.jslog.postValue(output)
-                        placeBet()
-                    }
-                }
-
             }
             //model!!.sendCommand(AutomationObject("bet","click_bet", arrayOf(it)))
+            if(it != ""){
+                clickBet()
+            }
         }
         model!!.jslog.observe(this) {
             var oddButtons = model!!.oddButtons.value
@@ -143,7 +156,7 @@ class SiteActivity : AppCompatActivity() {
         override fun run() {
             runOnUiThread {
                 webView!!.evaluateJavascript(betSite!!.eventListenerScript()) {
-                    model!!.jslog.postValue(it)
+                    //model!!.jslog.postValue(it)
                 }
             }
         }
@@ -165,15 +178,14 @@ class SiteActivity : AppCompatActivity() {
     }
 
     private fun onClickBet(automationEvents: AutomationEvents) {
+        //model!!.sendCommand(AutomationObject("bet","place_bet", arrayOf()))
         model!!.currentBetIndex.postValue(automationEvents.eventArgs[0].toString())
     }
 
-    private fun openBet(betindex: String) {
-        webView!!.evaluateJavascript(betSite!!.openBetScript(betindex.toString().toInt())){
-            runOnUiThread{
-                model!!.jslog.postValue(it)
-                placeBet()
-            }
+    private fun clickBet() {
+        //model!!.sendCommand(AutomationObject("bet","place_bet", arrayOf()))
+        webView!!.evaluateJavascript(betSite!!.openBetScript(model!!.currentBetIndex.value.toString().toInt())){
+            model!!.jslog.postValue("OpenBet")
         }
     }
 
@@ -181,7 +193,7 @@ class SiteActivity : AppCompatActivity() {
         val stake = sharedPref!!.getString("stake", "200")
 
         webView!!.evaluateJavascript(betSite!!.placeBetScript(stake.toString().toDouble())){
-            model!!.jslog.postValue(it)
+            model!!.jslog.postValue("PlaceBet")
         }
     }
 
@@ -189,7 +201,7 @@ class SiteActivity : AppCompatActivity() {
         val betindex = model!!.currentBetIndex.value
 
         webView!!.evaluateJavascript(betSite!!.comfirmBetScript(betindex.toString().toInt())) {
-            model!!.jslog.postValue(it)
+            model!!.jslog.postValue("ConfirmBet")
         }
     }
 
@@ -211,6 +223,9 @@ class SiteActivity : AppCompatActivity() {
         when (keyCode) {
             KeyEvent.KEYCODE_VOLUME_UP -> {
                 model!!.sendCommand(AutomationObject("bet","confirm_bet", arrayOf()))
+            }
+            KeyEvent.KEYCODE_VOLUME_DOWN -> {
+                model!!.sendCommand(AutomationObject("bet","place_bet", arrayOf()))
             }
         }
         return true
