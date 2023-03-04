@@ -10,8 +10,8 @@ android {
         applicationId "com.fshangala.lambo1slave"
         minSdk 29
         targetSdk 33
-        versionCode 5
-        versionName "2.3"
+        versionCode 6
+        versionName "2.3.1"
 
         testInstrumentationRunner "androidx.test.runner.AndroidJUnitRunner"
     }
