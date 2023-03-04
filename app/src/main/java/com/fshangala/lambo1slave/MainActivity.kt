@@ -188,4 +188,7 @@ class MainActivity : AppCompatActivity() {
         val intent = Intent(this,UpdateActivity::class.java)
         startActivity(intent)
     }
+    fun checkForUpdates(view: View){
+        openUpdate()
+    }
 }
